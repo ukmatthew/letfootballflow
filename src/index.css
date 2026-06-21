@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink-800 antialiased;
+  }
+
+  ::selection {
+    background-color: rgba(0, 176, 80, 0.2);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-black/5 bg-white p-5 shadow-card;
+  }
+
+  .hero-dark {
+    @apply relative text-white;
+    background-color: #0a0d13;
+    background-image:
+      radial-gradient(62% 48% at 6% 4%, rgba(26, 140, 255, 0.32), transparent 68%),
+      radial-gradient(58% 46% at 97% 26%, rgba(0, 176, 80, 0.3), transparent 70%),
+      radial-gradient(46% 42% at 2% 80%, rgba(26, 140, 255, 0.2), transparent 72%),
+      radial-gradient(52% 46% at 100% 98%, rgba(0, 176, 80, 0.18), transparent 72%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+
+  .paper-strip {
+    @apply relative overflow-hidden bg-[#f7f7f5] shadow-paper;
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .paper-strip-gray {
+    @apply relative overflow-hidden bg-[#ececea] shadow-paper;
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .brand-illustration {
+    mix-blend-mode: lighten;
+  }
+
+  .badge-situation {
+    @apply inline-block rounded-md bg-flow-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white;
+  }
+
+  .badge-opinion {
+    @apply inline-block rounded-md bg-pitch-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white;
+  }
+
+  .brush-btn-green {
+    @apply relative inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white;
+    background-image: url("/images/brand/greenpaint.png");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-height: 44px;
+  }
+
+  .brush-btn-submit {
+    @apply relative inline-flex w-full items-center justify-center border-0 bg-transparent transition active:scale-[0.99];
+    aspect-ratio: 2162 / 455;
+    background-image: url("/images/brand/submitvote.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+
+  .brush-btn-black {
+    @apply relative inline-flex w-full items-center justify-center gap-2 px-6 py-4 text-sm font-bold uppercase tracking-wide text-white transition active:scale-[0.99];
+    background-image: url("/images/brand/blackpaint.png");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    min-height: 48px;
+  }
+
+  .brush-btn-copy {
+    @apply relative inline-flex w-full items-center justify-center border-0 bg-transparent transition active:scale-[0.99];
+    aspect-ratio: 2804 / 561;
+    background-image: url("/images/brand/copymymessage.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+
+  .brush-cta-vote {
+    @apply block w-full;
+  }
+
+  .highlight-green {
+    @apply inline-block font-bold text-ink-900;
+    background-image: url("/images/brand/greenpaint.png");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    padding: 0.2rem 0.6rem;
+  }
+
+  .gradient-text {
+    @apply text-pitch-500;
+  }
+
+  .headline-display {
+    @apply font-display uppercase leading-none tracking-wide;
+  }
+}
+
+@layer utilities {
+  .delay-100 {
+    animation-delay: 0.1s;
+  }
+  .delay-200 {
+    animation-delay: 0.2s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

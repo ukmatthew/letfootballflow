@@ -1,0 +1,703 @@
+# Let Football Flow — MVP Build Plan
+
+## 1. Product concept
+
+**Let Football Flow** is a mobile-first fan vote about mandatory hydration breaks in football.
+
+Core message:
+
+> Hydrate the players. Don’t dam the game.
+
+The site should be fun, fast, and frictionless. No accounts. No email collection. No login. Users vote, optionally add their country and handle, then share the result.
+
+The product should feel like a live fan referendum during match stoppages.
+
+---
+
+## 2. MVP goal
+
+Launch a one-page voting website with:
+
+* One global vote
+* Three vote options
+* Optional country
+* Optional handle
+* Basic repeat-vote prevention
+* Live-ish results
+* Country leaderboard
+* Shareable result text
+* Donation/sponsor area
+* Privacy-first copy
+
+The site should work beautifully on mobile first.
+
+---
+
+## 3. Suggested stack
+
+Use a simple Cloudflare-native stack:
+
+* **Frontend:** Vite + React + Tailwind
+* **Hosting:** Cloudflare Workers
+* **Backend:** Cloudflare Workers Functions
+* **Database:** Cloudflare D1
+* **Bot protection:** Cloudflare Turnstile
+* **Optional caching:** Cloudflare Cache API or KV for aggregate results later
+* **Deployment:** Wrangler + GitHub
+
+Recommended repo shape:
+
+```txt
+let-football-flow/
+  src/
+    App.tsx
+    components/
+      VoteCard.tsx
+      ResultsCard.tsx
+      CountrySelect.tsx
+      ShareCard.tsx
+      SponsorBlock.tsx
+    lib/
+      api.ts
+      countries.ts
+  functions/
+    api/
+      vote.ts
+      results.ts
+      health.ts
+  migrations/
+    0001_initial.sql
+  public/
+  wrangler.toml
+  package.json
+```
+
+---
+
+## 4. Mobile wireframe
+
+### Page layout
+
+```txt
+------------------------------------------------
+| Let Football Flow                             |
+| Hydrate the players. Don’t dam the game.      |
+------------------------------------------------
+
+[ Hero section ]
+
+  The match stopped.
+  The vote starts.
+
+  Should every match have mandatory
+  hydration breaks?
+
+  [ 🌊 Let it flow ]
+  Only stop when conditions require it.
+
+  [ 💧 Breaks are fine ]
+  Player welfare comes first.
+
+  [ 🌡 Depends ]
+  Heat, venue and conditions matter.
+
+------------------------------------------------
+
+[ Optional identity ]
+
+  Represent your country
+  [ Country dropdown ]
+
+  Add your handle, optional
+  [ @handle input ]
+
+  [ Submit vote ]
+
+------------------------------------------------
+
+[ Results ]
+
+  Global Flow Meter
+
+  🌊 Let it flow        68%
+  💧 Breaks are fine    19%
+  🌡 Depends            13%
+
+  Votes cast: 12,481
+
+------------------------------------------------
+
+[ Country leaderboard ]
+
+  Most pro-flow countries
+
+  1. England      76% Flow
+  2. Scotland     74% Flow
+  3. Argentina    71% Flow
+
+------------------------------------------------
+
+[ Share ]
+
+  I voted to Let Football Flow 🌊
+  Hydrate the players. Don’t dam the game.
+
+  [ Share on X ]
+  [ Share on WhatsApp ]
+  [ Copy link ]
+
+------------------------------------------------
+
+[ Support ]
+
+  Help keep the fan vote online.
+  [ Donate ]
+
+  Sponsorships:
+  “This Flow Meter could be hydrated by you.”
+
+------------------------------------------------
+
+[ Footer ]
+
+  Independent fan project.
+  Not affiliated with FIFA.
+  Privacy: no accounts, no emails, no raw IPs stored.
+------------------------------------------------
+```
+
+---
+
+## 5. Vote wording
+
+Use this question:
+
+> Should every match have mandatory hydration breaks?
+
+Use these options:
+
+### Option A
+
+**Let it flow**
+Only stop when conditions require it.
+
+### Option B
+
+**Breaks are fine**
+Player welfare comes first.
+
+### Option C
+
+**Depends**
+Heat, venue and conditions matter.
+
+Internally store as:
+
+```ts
+type VoteChoice = "flow" | "breaks" | "depends";
+```
+
+---
+
+## 6. Data model
+
+Use D1 as the source of truth.
+
+### `polls`
+
+```sql
+CREATE TABLE polls (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Initial poll:
+
+```txt
+id: global-2026
+slug: global
+title: Should every match have mandatory hydration breaks?
+status: active
+```
+
+### `votes`
+
+```sql
+CREATE TABLE votes (
+  id TEXT PRIMARY KEY,
+  poll_id TEXT NOT NULL,
+  choice TEXT NOT NULL CHECK (choice IN ('flow', 'breaks', 'depends')),
+  country_code TEXT,
+  handle TEXT,
+  voter_hash TEXT NOT NULL,
+  user_agent_hash TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (poll_id) REFERENCES polls(id),
+  UNIQUE (poll_id, voter_hash)
+);
+```
+
+The important part is:
+
+```sql
+UNIQUE (poll_id, voter_hash)
+```
+
+This prevents the same anonymous voter token from voting twice in the same poll.
+
+### Optional aggregate table
+
+For the MVP, you can calculate results directly from `votes`.
+
+Later, add an aggregate table:
+
+```sql
+CREATE TABLE vote_totals (
+  poll_id TEXT NOT NULL,
+  choice TEXT NOT NULL,
+  country_code TEXT,
+  total INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (poll_id, choice, country_code)
+);
+```
+
+For launch, skip this unless performance becomes a problem.
+
+---
+
+## 7. Repeat-vote prevention
+
+The goal is not perfect election-grade voting. The goal is reasonable abuse prevention without accounts.
+
+Use layered friction:
+
+1. Server-set anonymous cookie
+2. D1 unique constraint
+3. Cloudflare Turnstile
+4. Rate limiting
+5. No raw personal data storage
+
+### Cookie approach
+
+When the user first visits or votes, set a cookie:
+
+```txt
+lff_voter=<random_uuid_or_crypto_token>
+```
+
+Cookie settings:
+
+```txt
+HttpOnly
+Secure
+SameSite=Lax
+Max-Age=31536000
+Path=/
+```
+
+Do not store the raw cookie value in D1.
+
+Instead, hash it server-side:
+
+```txt
+voter_hash = SHA256(VOTER_HASH_SECRET + cookie_value)
+```
+
+Then store only `voter_hash`.
+
+This means:
+
+* The user does not need an account
+* You do not collect email
+* You do not store the raw token
+* You can block repeat votes from the same browser
+* Clearing cookies will still allow another vote, but that is acceptable for this kind of viral poll
+
+### User agent hash
+
+Optionally store:
+
+```txt
+user_agent_hash = SHA256(USER_AGENT_SECRET + request.headers.get("User-Agent"))
+```
+
+Use it only for abuse analysis, not as the primary identity.
+
+### IP addresses
+
+Avoid storing raw IP addresses.
+
+For rate limiting, use Cloudflare-side tools where possible. If you need your own abuse signal, store only a short-lived hash, for example:
+
+```txt
+ip_hash = SHA256(DAILY_ROTATING_SECRET + cf_connecting_ip)
+```
+
+But for the MVP, I would avoid storing IP-derived data unless you really need it.
+
+---
+
+## 8. Turnstile
+
+Use Cloudflare Turnstile on the vote submission.
+
+Frontend:
+
+* Render Turnstile widget near the vote button
+* Send the Turnstile token with the vote request
+
+Backend:
+
+* Verify the token server-side before inserting the vote
+
+Cloudflare says Turnstile tokens are valid for five minutes and can return `timeout-or-duplicate` if expired or reused, so treat failed verification as “please try again.”
+
+Turnstile is a good fit because it avoids old-school CAPTCHA puzzles and is positioned by Cloudflare as a simpler CAPTCHA replacement.
+
+---
+
+## 9. API design
+
+### `GET /api/results?poll=global`
+
+Returns current totals.
+
+Example response:
+
+```json
+{
+  "poll": {
+    "id": "global-2026",
+    "title": "Should every match have mandatory hydration breaks?"
+  },
+  "totals": {
+    "flow": 12481,
+    "breaks": 3912,
+    "depends": 2440
+  },
+  "countries": [
+    {
+      "countryCode": "GB",
+      "total": 1021,
+      "flowPercent": 76
+    },
+    {
+      "countryCode": "AR",
+      "total": 880,
+      "flowPercent": 71
+    }
+  ],
+  "userHasVoted": true
+}
+```
+
+### `POST /api/vote`
+
+Request:
+
+```json
+{
+  "pollSlug": "global",
+  "choice": "flow",
+  "countryCode": "GB",
+  "handle": "@matthewisteiner",
+  "turnstileToken": "..."
+}
+```
+
+Response when successful:
+
+```json
+{
+  "ok": true,
+  "alreadyVoted": false,
+  "vote": {
+    "choice": "flow",
+    "countryCode": "GB",
+    "handle": "@matthewisteiner"
+  }
+}
+```
+
+Response when user already voted:
+
+```json
+{
+  "ok": true,
+  "alreadyVoted": true,
+  "message": "You have already voted in this poll."
+}
+```
+
+---
+
+## 10. Backend vote flow
+
+Pseudo-flow:
+
+```txt
+POST /api/vote
+
+1. Read or create anonymous voter cookie.
+2. Validate request body.
+3. Validate Turnstile token.
+4. Normalize country code.
+5. Normalize handle.
+6. Hash voter token.
+7. Insert vote into D1.
+8. If UNIQUE constraint fails, return alreadyVoted.
+9. Return updated results.
+```
+
+Validation rules:
+
+```txt
+choice: must be flow, breaks, or depends
+countryCode: optional, ISO 3166-1 alpha-2, uppercase
+handle: optional, max 30 chars
+handle: allow letters, numbers, underscore, dot, hyphen, @
+```
+
+Do not allow free-text comments in MVP.
+
+---
+
+## 11. Frontend states
+
+The vote card should have these states:
+
+### Not voted
+
+Show the three options.
+
+### Option selected
+
+Show optional country and handle.
+
+### Submitting
+
+Disable buttons and show:
+
+> Sending your vote downstream…
+
+### Voted
+
+Show:
+
+> You voted to Let Football Flow 🌊
+
+Then show global results and share buttons.
+
+### Already voted
+
+Show:
+
+> You’ve already voted in this poll.
+
+Then show results.
+
+---
+
+## 12. Visual direction
+
+Brand:
+
+```txt
+Name: Let Football Flow
+Tagline: Hydrate the players. Don’t dam the game.
+Tone: witty, fan-led, not anti-safety
+```
+
+Visual ideas:
+
+* Water ripple on vote tap
+* Football pitch lines flowing like water
+* Flow Meter gauge
+* Big mobile buttons
+* Blue + green theme
+* Rounded cards
+* Sticky bottom vote button on mobile
+* Fun microcopy
+
+Copy examples:
+
+```txt
+The match stopped. The vote starts.
+
+Hydration matters. So does the flow of football.
+
+Don’t turn the beautiful game into four quarters.
+
+Vote once. No account. No email. No nonsense.
+```
+
+---
+
+## 13. Share mechanics
+
+After voting, generate share text:
+
+```txt
+I voted 🌊 Let it flow.
+
+Hydrate the players. Don’t dam the game.
+
+Vote at letfootballflow.com
+```
+
+For X:
+
+```txt
+https://twitter.com/intent/tweet?text=...
+```
+
+For WhatsApp:
+
+```txt
+https://wa.me/?text=...
+```
+
+For clipboard:
+
+```ts
+navigator.clipboard.writeText(shareText)
+```
+
+Later, add dynamic Open Graph image generation.
+
+MVP can use one static OG image:
+
+```txt
+Let Football Flow
+Hydrate the players. Don’t dam the game.
+```
+
+---
+
+## 14. Privacy copy
+
+Put this in the footer or a small privacy page:
+
+```txt
+Let Football Flow does not require accounts, emails, passwords, or precise location.
+
+We use one anonymous voting cookie to help prevent repeat voting. We store a hashed version of that anonymous token, your vote choice, optional country, optional handle, and the time of vote.
+
+We do not store your raw voting cookie. We do not sell personal data. We do not use your vote for ad targeting.
+```
+
+Also show this near the vote:
+
+```txt
+Vote once. No account. No email. No spam.
+```
+
+---
+
+## 15. Sponsor/donation block
+
+MVP copy:
+
+```txt
+Help keep the fan vote online during the tournament.
+
+If you like football that flows, support the project.
+```
+
+Button:
+
+```txt
+Donate
+```
+
+Sponsor placeholder:
+
+```txt
+Want to sponsor the Flow Meter?
+
+Perfect for water brands, sports drinks, fan media, and football newsletters.
+```
+
+Avoid official tournament marks/logos.
+
+Add disclaimer:
+
+```txt
+Independent fan project. Not affiliated with FIFA or any tournament organiser.
+```
+
+---
+
+## 16. Build milestones
+
+### Milestone 1 — Static frontend
+
+* Build landing page
+* Build vote card
+* Build results card using mock data
+* Build share buttons
+* Make it mobile-first
+
+### Milestone 2 — D1 database
+
+* Create D1 database
+* Add migrations
+* Seed global poll
+* Connect Workers Functions to D1
+
+### Milestone 3 — Voting API
+
+* Add `/api/vote`
+* Add anonymous cookie
+* Add hashing
+* Add duplicate protection
+* Add `/api/results`
+
+### Milestone 4 — Turnstile
+
+* Add frontend Turnstile widget
+* Add backend verification
+* Handle expired/failed tokens nicely
+
+### Milestone 5 — Launch polish
+
+* Add domain
+* Add Open Graph image
+* Add privacy page
+* Add donation link
+* Add sponsor CTA
+* Add analytics, preferably privacy-friendly
+
+---
+
+## 17. Cursor prompt to start implementation
+
+Build a Cloudflare Workers app called “Let Football Flow”.
+
+Use Vite, React, TypeScript and Tailwind. Create a mobile-first one-page voting site. The brand is “Let Football Flow” with the tagline “Hydrate the players. Don’t dam the game.”
+
+The page should include:
+
+* Hero section
+* Three voting options: flow, breaks, depends
+* Optional country dropdown
+* Optional handle field
+* Results card
+* Country leaderboard
+* Share buttons
+* Donation/sponsor block
+* Footer with independent fan project disclaimer
+
+Use Cloudflare Workers Functions for the backend. Add D1 database support. Create `/api/vote` and `/api/results`.
+
+Use an anonymous HttpOnly cookie for repeat-vote prevention. Store only a server-side hash of the cookie in D1. Add a unique constraint on `(poll_id, voter_hash)`. Do not require login or email. Do not store raw IP addresses.
+
+Add Cloudflare Turnstile support to the vote submission.
+
+Prioritize simplicity, mobile performance, and clean readable code.

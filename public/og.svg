@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#0f1117"/>
+  <text x="600" y="240" text-anchor="middle" font-family="Anton, sans-serif" font-size="96" fill="white" letter-spacing="2">TWO HALVES.</text>
+  <text x="600" y="360" text-anchor="middle" font-family="Anton, sans-serif" font-size="96" fill="#00b050" letter-spacing="2">NOT FOUR AD BREAKS.</text>
+  <text x="600" y="480" text-anchor="middle" font-family="Inter Tight, sans-serif" font-size="32" fill="#aaaaaa">Cast your vote at LetFootballFlow.com</text>
+  <path d="M560 80 L640 50 L720 80 V130 C720 170 680 200 640 215 C600 200 560 170 560 130 V80 Z" fill="#00b050"/>
+  <circle cx="640" cy="125" r="22" fill="white"/>
+</svg>
