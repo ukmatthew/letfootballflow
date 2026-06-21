@@ -1,6 +1,6 @@
 name = "let-football-flow"
 compatibility_date = "2024-06-20"
-pages_build_output_dir = "dist"
+main = "./dist/worker/index.js"
 
 # D1 database binding. Create the database with:
 #   wrangler d1 create lff_db
@@ -8,10 +8,26 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "lff_db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "1ff5501c-1617-4282-b146-abdc1b7af730"
+migrations_dir = "migrations"
 
 # Non-secret vars. Secrets (TURNSTILE_SECRET_KEY, VOTER_HASH_SECRET) should be
-# set with `wrangler pages secret put <NAME>` and are NOT committed here.
+# set with `wrangler secret put <NAME>` and are NOT committed here.
 [vars]
 # Set to "1" to require Turnstile verification on votes (recommended in prod).
 TURNSTILE_REQUIRED = "0"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+# Custom domains — Cloudflare creates DNS + SSL automatically on deploy.
+[[routes]]
+pattern = "letfootballflow.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.letfootballflow.com"
+custom_domain = true

@@ -1,4 +1,4 @@
-# Copy to `.dev.vars` for local development with `wrangler pages dev`.
+# Copy to `.dev.vars` for local development with `wrangler dev`.
 # `.dev.vars` is gitignored. These are the server-side secrets.
 
 # Mixed into the anonymous voter-cookie hash. Use any long random string.

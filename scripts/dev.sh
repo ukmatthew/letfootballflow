@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 if lsof -nP -iTCP:8788 -sTCP:LISTEN >/dev/null 2>&1; then
   echo "Port 8788 is already in use. Stop the other dev server first:"
-  echo "  pkill -f \"wrangler pages dev\""
+  echo "  pkill -f \"wrangler dev\""
   exit 1
 fi
 
@@ -18,6 +18,11 @@ fi
 if [[ ! -f dist/index.html ]]; then
   echo "dist/ is missing. Run: npm run build"
   exit 1
+fi
+
+if [[ ! -f dist/worker/index.js ]]; then
+  echo "Worker bundle missing. Running: npm run build:worker"
+  npm run build:worker
 fi
 
 cleanup() {
@@ -43,4 +48,4 @@ echo "Full-stack dev ready → http://127.0.0.1:8788"
 echo "  (Vite HMR for UI, Wrangler for /api + D1)"
 echo ""
 
-exec npx wrangler pages dev dist --proxy 5173 --port 8788 --ip 127.0.0.1
+exec npx wrangler dev --port 8788 --ip 127.0.0.1 --proxy 5173
