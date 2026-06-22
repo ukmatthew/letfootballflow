@@ -38,3 +38,16 @@ export async function submitVote(payload: VotePayload): Promise<VoteResponse> {
   });
   return parse<VoteResponse>(res);
 }
+
+export async function updateVoteCountry(payload: {
+  pollSlug: string;
+  countryCode: string;
+}): Promise<Results> {
+  const res = await fetch("/api/vote/country", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+  return parse<Results>(res);
+}

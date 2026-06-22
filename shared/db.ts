@@ -1,7 +1,6 @@
 import type { CountryResult, Poll, ResultsPayload, VoteChoice } from "./types";
 import { isValidChoice } from "./util";
 
-const COUNTRY_MIN_VOTES = 5; // hide tiny samples from the leaderboard
 const COUNTRY_LIMIT = 10;
 
 export async function getPollBySlug(
@@ -76,11 +75,10 @@ async function getCountryLeaderboard(
        FROM votes
        WHERE poll_id = ? AND country_code IS NOT NULL
        GROUP BY country_code
-       HAVING total >= ?
        ORDER BY (CAST(flowVotes AS REAL) / total) DESC, total DESC
        LIMIT ?`,
     )
-    .bind(pollId, COUNTRY_MIN_VOTES, COUNTRY_LIMIT)
+    .bind(pollId, COUNTRY_LIMIT)
     .all<{ countryCode: string; total: number; flowVotes: number }>();
 
   return (results ?? []).map((r) => ({
@@ -90,16 +88,46 @@ async function getCountryLeaderboard(
   }));
 }
 
+interface UserVoteRow {
+  choice: string;
+  countryCode: string | null;
+}
+
 async function getUserVote(
   db: D1Database,
   pollId: string,
   voterHash: string,
-): Promise<string | null> {
+): Promise<UserVoteRow | null> {
   const row = await db
-    .prepare("SELECT choice FROM votes WHERE poll_id = ? AND voter_hash = ?")
+    .prepare(
+      "SELECT choice, country_code AS countryCode FROM votes WHERE poll_id = ? AND voter_hash = ?",
+    )
     .bind(pollId, voterHash)
-    .first<{ choice: string }>();
-  return row?.choice ?? null;
+    .first<UserVoteRow>();
+  return row ?? null;
+}
+
+export type UpdateVoteCountryResult = "updated" | "already-set" | "no-vote";
+
+export async function updateVoteCountry(
+  db: D1Database,
+  pollId: string,
+  voterHash: string,
+  countryCode: string,
+): Promise<UpdateVoteCountryResult> {
+  const vote = await getUserVote(db, pollId, voterHash);
+  if (!vote) return "no-vote";
+  if (vote.countryCode !== null) return "already-set";
+
+  const result = await db
+    .prepare(
+      `UPDATE votes SET country_code = ?
+       WHERE poll_id = ? AND voter_hash = ? AND country_code IS NULL`,
+    )
+    .bind(countryCode, pollId, voterHash)
+    .run();
+
+  return (result.meta.changes ?? 0) > 0 ? "updated" : "already-set";
 }
 
 export async function getResults(
@@ -107,20 +135,22 @@ export async function getResults(
   poll: Poll,
   voterHash: string | null,
 ): Promise<ResultsPayload> {
-  const [{ totals, totalVotes }, countries, rawUserChoice] = await Promise.all([
+  const [{ totals, totalVotes }, countries, userVote] = await Promise.all([
     getTotals(db, poll.id),
     getCountryLeaderboard(db, poll.id),
     voterHash ? getUserVote(db, poll.id, voterHash) : Promise.resolve(null),
   ]);
 
-  const userChoice = isValidChoice(rawUserChoice) ? rawUserChoice : null;
+  const userChoice =
+    userVote && isValidChoice(userVote.choice) ? userVote.choice : null;
 
   return {
     poll: { id: poll.id, title: poll.title },
     totals,
     totalVotes,
     countries,
-    userHasVoted: rawUserChoice !== null,
+    userHasVoted: userVote !== null,
     userChoice,
+    userCountryCode: userVote?.countryCode ?? null,
   };
 }

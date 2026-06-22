@@ -1,1 +1,1 @@
-{"root":["./functions/api/health.ts","./functions/api/results.ts","./functions/api/vote.ts"],"version":"5.9.3"}
+{"root":["./functions/api/health.ts","./functions/api/results.ts","./functions/api/vote.ts","./functions/api/vote/country.ts"],"version":"5.9.3"}

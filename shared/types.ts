@@ -30,8 +30,14 @@ export interface ResultsPayload {
   countries: CountryResult[];
   userHasVoted: boolean;
   userChoice: VoteChoice | null;
+  userCountryCode: string | null;
   /** ISO-style country code from CF-IPCountry, when known. Not stored. */
   suggestedCountry?: string | null;
+}
+
+export interface CountryUpdateRequestBody {
+  pollSlug?: string;
+  countryCode?: string;
 }
 
 export interface VoteRequestBody {

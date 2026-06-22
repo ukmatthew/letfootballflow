@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "bash scripts/dev.sh",
+    "dev:stop": "bash scripts/stop-dev.sh",
+    "dev:restart": "bash scripts/stop-dev.sh && bash scripts/dev.sh",
     "dev:ui": "vite",
-    "build": "tsc -b && vite build",
+    "build": "echo '→ Typechecking…' && tsc -b && echo '→ Bundling UI…' && vite build",
     "build:worker": "wrangler pages functions build --outdir=./dist/worker/",
     "preview": "npm run build && npm run build:worker && wrangler dev --port 8788 --ip 127.0.0.1",
     "typecheck": "tsc -b --noEmit",

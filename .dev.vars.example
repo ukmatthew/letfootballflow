@@ -5,7 +5,8 @@
 VOTER_HASH_SECRET="change-me-to-a-long-random-string"
 
 # Cloudflare Turnstile secret key (optional locally).
-# Turnstile "always passes" test secret:
+# Leave unset for local dev — the UI skips Turnstile when import.meta.env.DEV is true.
+# Turnstile "always passes" test secret (for production-mode local preview):
 # TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 
 # Set to "1" to require Turnstile verification on votes.

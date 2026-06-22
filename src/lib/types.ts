@@ -13,6 +13,7 @@ export interface Results {
   countries: CountryResult[];
   userHasVoted: boolean;
   userChoice: VoteChoice | null;
+  userCountryCode: string | null;
   suggestedCountry?: string | null;
 }
 
@@ -40,7 +41,7 @@ export const CHOICES: ChoiceMeta[] = [
   {
     id: "flow",
     emoji: "🌊",
-    title: "Let Football Flow",
+    title: "I'm voting to Let Football Flow",
     subtitle: "Hydration breaks only when conditions demand them.",
     image: "/images/footballer.png",
     accent: "ring-flow-300 bg-flow-50",
@@ -62,4 +63,18 @@ export const CHOICES: ChoiceMeta[] = [
 
 export function choiceMeta(id: VoteChoice | string): ChoiceMeta {
   return CHOICES.find((c) => c.id === id) ?? CHOICES[0];
+}
+
+export function choiceDisplayTitle(
+  id: VoteChoice,
+  submittedChoice: VoteChoice | null,
+): string {
+  const meta = choiceMeta(id);
+  if (!submittedChoice) return meta.title;
+  if (id === submittedChoice) {
+    if (id === "flow") return "I voted for Let Football Flow";
+    return "I voted for Keep Mandatory Breaks";
+  }
+  if (id === "flow") return "I didn't vote for Let Football Flow";
+  return "I didn't vote for Keep Mandatory Breaks";
 }

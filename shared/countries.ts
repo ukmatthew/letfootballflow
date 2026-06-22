@@ -24,6 +24,10 @@ const LEGACY_CODE_ALIASES: Record<string, string> = {
   GB: "SX",
 };
 
+export function isKnownCountryCode(code: string): boolean {
+  return KNOWN_CODES.has(code.toUpperCase());
+}
+
 export function isUkDetected(raw: string | null | undefined): boolean {
   return raw?.toUpperCase() === UK_REGION_CODE;
 }

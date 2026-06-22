@@ -116,6 +116,18 @@
   .headline-display {
     @apply font-display uppercase leading-none tracking-wide;
   }
+
+  .badge-vote-now {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-pitch-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-pitch-400;
+  }
+
+  .btn-vote-primary {
+    @apply relative flex w-full items-center justify-between rounded-full bg-pitch-500 px-5 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-pitch-500/25 transition hover:bg-pitch-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-vote-primary-icon {
+    @apply grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/20;
+  }
 }
 
 @layer utilities {
